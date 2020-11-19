@@ -1,0 +1,2 @@
+[workspace]
+members = ["ruapt_tracker", "ruapt_proxy"]
