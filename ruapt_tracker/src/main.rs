@@ -11,23 +11,22 @@ use storage::redis::DB;
 use storage::Storage;
 use tokio::net::TcpListener;
 use tokio::prelude::*;
-use tokio_serde::formats::*;
-use tokio_serde::{Deserializer, Framed, Serializer};
-use tokio_util::codec::{FramedRead, LengthDelimitedCodec, LinesCodec};
+use tokio_util::codec::{FramedRead, LengthDelimitedCodec, FramedWrite};
 
 async fn tracker_loop(socket: tokio::net::TcpStream, db: std::sync::Arc<storage::redis::DB>) {
-    let (reader, mut writer) = socket.into_split();
-    let mut lines = FramedRead::new(reader, LinesCodec::new());
-    while let Ok(Some(msg)) = lines.try_next().await {
-        let a: AnnounceRequestData = match from_bytes(msg.as_bytes()) {
+    let (read_half, write_half) = socket.into_split();
+    let mut reader = FramedRead::new(read_half, LengthDelimitedCodec::new());
+    let mut writer = FramedWrite::new(write_half,LengthDelimitedCodec::new());
+    while let Ok(Some(msg)) = reader.try_next().await {
+        let a: AnnounceRequestData = match from_bytes(&msg) {
             Ok(a) => a,
             _ => continue,
         };
-        println!("{:?}", a);
+        // println!("{:?}", a);
         let response = db.announce(&a).await.unwrap();
         if let Some(r) = response {
             let bytes = to_bytes(&r).unwrap();
-            writer.write_all(&bytes).await;
+            writer.send(bytes.into()).await.unwrap();
         }
     }
 }

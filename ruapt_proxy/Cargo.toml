@@ -8,3 +8,11 @@ workspace = "../"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+serde = "*"
+deadpool = "*"
+async-trait = "*"
+tokio =  { version = "^0.2", features = ["full"] }
+bendy = { version = "^0.3", features = ["std", "serde"] }
+tokio-util = { version = "0.3.1", features = ["full"] }
+futures = "0.3"
+rand = "*"

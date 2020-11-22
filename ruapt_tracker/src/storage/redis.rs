@@ -128,7 +128,7 @@ impl Storage for DB {
         let ret: Vec<String> = to_con
             .zrangebyscore_limit(&t_id, now - 300, "+inf", 0, data.num_want)
             .await?;
-        println!("{:?}", ret);
+        // println!("{:?}", ret);
         // todo! {}
         Ok(Some(AnnounceResponseData {
             peers: ret.iter().map(Peer::from).collect(),
