@@ -32,10 +32,10 @@ async fn bench(pool: Arc<Pool>, c: Arc<Context>) {
         announce(con, &d).await;
         let t = now.elapsed().unwrap().as_millis();
         s = (s + t) / 2;
-        cnt = (cnt + 1) % 1000;
         if cnt == 0 {
             println!("[RT] : {}ms", s);
         }
+        cnt = (cnt + 1) % 1000;
     }
 }
 
@@ -80,7 +80,7 @@ async fn main() {
     // let con = pool.get().await?;
     // bench(pool).await;
     let c = Arc::new(Context::new());
-    let h: Vec<tokio::task::JoinHandle<()>> = (1..=100)
+    let h: Vec<tokio::task::JoinHandle<()>> = (1..=700)
         .map(|_| tokio::spawn(bench(pool.clone(), c.clone())))
         .collect();
     // todo!()

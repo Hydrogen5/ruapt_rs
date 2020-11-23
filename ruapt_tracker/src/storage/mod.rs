@@ -1,4 +1,5 @@
 pub mod redis;
+// pub mod memory;
 
 use crate::data::*;
 use crate::error::TrackerResult;

@@ -11,12 +11,12 @@ use storage::redis::DB;
 use storage::Storage;
 use tokio::net::TcpListener;
 use tokio::prelude::*;
-use tokio_util::codec::{FramedRead, LengthDelimitedCodec, FramedWrite};
+use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 
 async fn tracker_loop(socket: tokio::net::TcpStream, db: std::sync::Arc<storage::redis::DB>) {
     let (read_half, write_half) = socket.into_split();
     let mut reader = FramedRead::new(read_half, LengthDelimitedCodec::new());
-    let mut writer = FramedWrite::new(write_half,LengthDelimitedCodec::new());
+    let mut writer = FramedWrite::new(write_half, LengthDelimitedCodec::new());
     while let Ok(Some(msg)) = reader.try_next().await {
         let a: AnnounceRequestData = match from_bytes(&msg) {
             Ok(a) => a,
@@ -40,12 +40,16 @@ async fn compaction_loop(db: std::sync::Arc<storage::redis::DB>) {
     }
 }
 
-#[tokio::main]
+// jemalloc : 261% 44ms 39M
+// ptmalloc : 282% 46ms 16M
+#[global_allocator]
+static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
+#[tokio::main(flavor = "multi_thread", worker_threads = 3)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("<================Rua PT is running================>");
     let db = Arc::new(DB::new(
-        "redis://:1234567890@127.0.0.1:1711/0",
-        "redis://:1234567890@127.0.0.1:1711/1",
+        "redis://:1234567890@127.0.0.1:1710/0",
+        "redis://:1234567890@127.0.0.1:1710/1",
     ));
     tokio::spawn(compaction_loop(db.clone()));
     let listener = TcpListener::bind("127.0.0.1:8081").await.unwrap();

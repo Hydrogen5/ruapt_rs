@@ -16,3 +16,4 @@ async-trait = "*"
 serde = "*"
 bendy = { version = "^0.3", features = ["std", "serde"] }
 futures = "0.3"
+jemallocator = "0.3.2"

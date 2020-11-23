@@ -5,7 +5,7 @@ use crate::util::get_timestamp;
 use async_trait::async_trait;
 use deadpool::managed;
 use deadpool_redis::{
-    redis::{AsyncCommands, AsyncIter, RedisError},
+    redis::{AsyncCommands, AsyncIter, ErrorKind, FromRedisValue, RedisError, RedisResult, Value},
     Config, ConnectionWrapper, Pipeline, PoolError,
 };
 
@@ -17,9 +17,18 @@ pub struct DB {
     user_pool: Pool,
 }
 
+impl FromRedisValue for Peer {
+    fn from_redis_value(v: &Value) -> RedisResult<Self> {
+        let gg = RedisError::from((ErrorKind::TypeError, "Cannot convert to Peer"));
+        match *v {
+            Value::Data(ref bytes) => Peer::from(bytes).map_err(|_| gg),
+            _ => Err(gg),
+        }
+    }
+}
+
 impl DB {
     /// The uri format is `redis://[<username>][:<passwd>@]<hostname>[:port]`  
-    ///
     /// And we will take db 1 to store torrent connect info and db 2 to store
     /// the info of users.
     pub fn new(torrent_uri: &str, user_uri: &str) -> Self {
@@ -101,10 +110,8 @@ impl Storage for DB {
         &self,
         data: &AnnounceRequestData,
     ) -> TrackerResult<Option<AnnounceResponseData>> {
-        use crate::data::Action::*;
         // do nothing, the compaction will remove it
         // in few minutes.
-        // maybe remove it from the user?
         let mut user_con = self.get_user_con_no_delay().await?;
         let t_id = format!("to_{}", data.torrent_id);
         if let Stopped = data.action {
@@ -125,13 +132,12 @@ impl Storage for DB {
         let mut to_con = self.get_torrent_con_no_delay().await?;
         p.execute_async(&mut to_con).await?;
         // ZRANGEBYSCORE t_id now-300 +inf LIMIT 0 num_want
-        let ret: Vec<String> = to_con
+        // dup here, maybe rewrite the convert?
+        let peers: Vec<Peer> = to_con
             .zrangebyscore_limit(&t_id, now - 300, "+inf", 0, data.num_want)
             .await?;
         // println!("{:?}", ret);
         // todo! {}
-        Ok(Some(AnnounceResponseData {
-            peers: ret.iter().map(Peer::from).collect(),
-        }))
+        Ok(Some(AnnounceResponseData { peers }))
     }
 }
